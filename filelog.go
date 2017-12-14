@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+var DEFUALT_HOUR_SUFFIX string = "20060102.15"
 // This log writer sends output to a file
 type FileLogWriter struct {
 	rec chan *LogRecord
@@ -37,6 +38,14 @@ type FileLogWriter struct {
 
 	// Keep old logfiles (.001, .002, etc)
 	rotate bool
+
+	//新增按小时
+	hourly         bool
+	hourfilesuffix string
+	hourinterval   int
+	// after hourinterval hour unix-time sec
+	nxtRotateSec int64
+	curFileName  string
 }
 
 // This is the FileLogWriter's output method
@@ -57,13 +66,17 @@ func (w *FileLogWriter) Close() {
 //
 // The standard log-line format is:
 //   [%D %T] [%L] (%S) %M
-func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
+func NewFileLogWriter(fname string, rotate bool, hourly bool, hourFileSuffix string, hourInterval int) *FileLogWriter {
 	w := &FileLogWriter{
 		rec:      make(chan *LogRecord, LogBufferLength),
 		rot:      make(chan bool),
 		filename: fname,
 		format:   "[%D %T] [%L] (%S) %M",
 		rotate:   rotate,
+		//新增小时
+		hourly:         hourly,
+		hourfilesuffix: hourFileSuffix,
+		hourinterval:   hourInterval,
 	}
 
 	// open the file for the first time
@@ -82,35 +95,37 @@ func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
 
 		for {
 			select {
-			case <-w.rot:
-				if err := w.intRotate(); err != nil {
-					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
-					return
-				}
 			case rec, ok := <-w.rec:
 				if !ok {
 					return
 				}
-				now := time.Now()
-				if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
-					(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) ||
-					(w.daily && now.Day() != w.daily_opendate) {
+				n2 := time.Now()
+				//if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
+				//	(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) ||
+				//	(w.daily && now.Day() != w.daily_opendate) {
+				//	if err := w.intRotate(); err != nil {
+				//		fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+				//		return
+				//	}
+				//}
+				//新增小时
+				if n2.Unix() >= w.nxtRotateSec {
+					// 更换新文件
 					if err := w.intRotate(); err != nil {
 						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 						return
 					}
 				}
-
 				// Perform the write
-				n, err := fmt.Fprint(w.file, FormatLogRecord(w.format, rec))
+				_, err := fmt.Fprint(w.file, FormatLogRecord(w.format, rec))
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 					return
 				}
 
 				// Update the counts
-				w.maxlines_curlines++
-				w.maxsize_cursize += n
+				//w.maxlines_curlines++
+				//w.maxsize_cursize += n
 			}
 		}
 	}()
@@ -133,28 +148,54 @@ func (w *FileLogWriter) intRotate() error {
 
 	// If we are keeping log files, move it to the next available number
 	if w.rotate {
-		_, err := os.Lstat(w.filename)
-		if err == nil { // file exists
-			// Find the next available number
-			num := 1
-			fname := ""
-			for ; err == nil && num <= 999; num++ {
-				fname = w.filename + fmt.Sprintf(".%03d", num)
-				_, err = os.Lstat(fname)
-			}
-			// return error if the last file checked still existed
-			if err == nil {
-				return fmt.Errorf("Rotate: Cannot find free log number to rename %s\n", w.filename)
+		//_, err := os.Lstat(w.filename)
+		//if err == nil { // file exists
+		//	// Find the next available number
+		//	num := 1
+		//	fname := ""
+		//	for ; err == nil && num <= 999; num++ {
+		//		fname = w.filename + fmt.Sprintf(".%03d", num)
+		//		_, err = os.Lstat(fname)
+		//	}
+		//	// return error if the last file checked still existed
+		//	if err == nil {
+		//		return fmt.Errorf("Rotate: Cannot find free log number to rename %s\n", w.filename)
+		//	}
+		//
+		//	// Rename the file to its newfound home
+		//	err = os.Rename(w.filename, fname)
+		//	if err != nil {
+		//		return fmt.Errorf("Rotate: %s\n", err)
+		//	}
+		//}
+		//新增小时
+		if w.hourly {
+			now := time.Now()
+			format := w.hourfilesuffix
+			if format == "" {
+				format = DEFUALT_HOUR_SUFFIX
+				w.hourfilesuffix = DEFUALT_HOUR_SUFFIX
 			}
 
-			// Rename the file to its newfound home
-			err = os.Rename(w.filename, fname)
+			fName := w.filename + "." + fmt.Sprintf("%s", now.Format(format))
+			fd, err := os.OpenFile(fName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 			if err != nil {
-				return fmt.Errorf("Rotate: %s\n", err)
+				return err
 			}
-		}
-	}
+			w.curFileName = fName
+			w.file = fd
+			interval := w.hourinterval
+			if interval < 0 || interval > 23 {
+				w.hourinterval, interval = 1, 1
+			}
+			aft1hour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+interval, 0, 0, 0, time.Local)
+			//aft1hour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second() + 5, 0, time.Local)
+			w.nxtRotateSec = aft1hour.Unix()
 
+			return nil
+		}
+
+	}
 	// Open the log file
 	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
@@ -227,10 +268,24 @@ func (w *FileLogWriter) SetRotate(rotate bool) *FileLogWriter {
 	return w
 }
 
+//新增小时
+func (w *FileLogWriter) SetHourly(hourly bool) *FileLogWriter {
+	w.hourly = hourly
+	return w
+}
+func (w *FileLogWriter) SetHourFileSuffix(hourfilesuffix string) *FileLogWriter {
+	w.hourfilesuffix = hourfilesuffix
+	return w
+}
+func (w *FileLogWriter) SetHourInterval(hourinterval int) *FileLogWriter {
+	w.hourinterval = hourinterval
+	return w
+}
+
 // NewXMLLogWriter is a utility method for creating a FileLogWriter set up to
 // output XML record log messages instead of line-based ones.
 func NewXMLLogWriter(fname string, rotate bool) *FileLogWriter {
-	return NewFileLogWriter(fname, rotate).SetFormat(
+	return NewFileLogWriter(fname, rotate, false, "", 1).SetFormat(
 		`	<record level="%L">
 		<timestamp>%D %T</timestamp>
 		<source>%S</source>
