@@ -10,3 +10,6 @@ import l4g "log4go.googlecode.com/hg"
 Acknowledgements:
 - pomack
   For providing awesome patches to bring log4go up to the latest Go spec
+
+# New feature
+* log 到文件可以选择滚动类型,比如:按天,小时等等.

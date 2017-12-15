@@ -8,7 +8,14 @@ import (
 	"time"
 )
 
-var DEFUALT_HOUR_SUFFIX string = "20060102.15"
+//The default suffix of the file saved by time
+const DEFUALT_ROT_TIME_SUFFIX_HOUR string = "20060102_15"
+const DEFUALT_ROT_TIME_SUFFIX_DAY string = "200601_02"
+
+//rotation type
+const ROT_TYPE_TIME_HOUR string = "hour"
+const ROT_TYPE_TIME_DAY string = "day"
+
 // This log writer sends output to a file
 type FileLogWriter struct {
 	rec chan *LogRecord
@@ -24,28 +31,14 @@ type FileLogWriter struct {
 	// File header/trailer
 	header, trailer string
 
-	// Rotate at linecount
-	maxlines          int
-	maxlines_curlines int
-
-	// Rotate at size
-	maxsize         int
-	maxsize_cursize int
-
-	// Rotate daily
-	daily          bool
-	daily_opendate int
-
 	// Keep old logfiles (.001, .002, etc)
-	rotate bool
-
-	//新增按小时
-	hourly         bool
-	hourfilesuffix string
-	hourinterval   int
-	// after hourinterval hour unix-time sec
-	nxtRotateSec int64
-	curFileName  string
+	rotatable   bool
+	rottype     string
+	rotsuffix   string
+	rotinterval int
+	// get unix-time according to rotinterval and rottype
+	nxtRotateTime int64
+	curFileName   string
 }
 
 // This is the FileLogWriter's output method
@@ -66,17 +59,17 @@ func (w *FileLogWriter) Close() {
 //
 // The standard log-line format is:
 //   [%D %T] [%L] (%S) %M
-func NewFileLogWriter(fname string, rotate bool, hourly bool, hourFileSuffix string, hourInterval int) *FileLogWriter {
+func NewFileLogWriter(fname string, rotatable bool, rottype string, rotsuffix string, rotinterval int) *FileLogWriter {
 	w := &FileLogWriter{
 		rec:      make(chan *LogRecord, LogBufferLength),
 		rot:      make(chan bool),
 		filename: fname,
 		format:   "[%D %T] [%L] (%S) %M",
-		rotate:   rotate,
-		//新增小时
-		hourly:         hourly,
-		hourfilesuffix: hourFileSuffix,
-		hourinterval:   hourInterval,
+
+		rotatable:   rotatable,
+		rottype:     rottype,
+		rotsuffix:   rotsuffix,
+		rotinterval: rotinterval,
 	}
 
 	// open the file for the first time
@@ -99,17 +92,8 @@ func NewFileLogWriter(fname string, rotate bool, hourly bool, hourFileSuffix str
 				if !ok {
 					return
 				}
-				n2 := time.Now()
-				//if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
-				//	(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) ||
-				//	(w.daily && now.Day() != w.daily_opendate) {
-				//	if err := w.intRotate(); err != nil {
-				//		fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
-				//		return
-				//	}
-				//}
-				//新增小时
-				if w.rotate && w.hourly && n2.Unix() >= w.nxtRotateSec {
+
+				if w.canRotate() {
 					// 更换新文件
 					if err := w.intRotate(); err != nil {
 						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
@@ -133,6 +117,20 @@ func NewFileLogWriter(fname string, rotate bool, hourly bool, hourFileSuffix str
 	return w
 }
 
+//是否到了转换的时候
+func (w *FileLogWriter) canRotate() bool {
+	if !w.rotatable {
+		return false
+	}
+	if w.rottype == ROT_TYPE_TIME_DAY || w.rottype == ROT_TYPE_TIME_HOUR {
+		now := time.Now()
+		if now.Unix() >= w.nxtRotateTime {
+			return true
+		}
+	}
+	return false
+}
+
 // Request that the logs rotate
 func (w *FileLogWriter) Rotate() {
 	w.rot <- true
@@ -154,29 +152,36 @@ func (w *FileLogWriter) intRotate() error {
 	//写入的文件名,开始为设置的文件名 filename
 	toWriteFile := w.filename
 
-	if w.rotate {
+	if w.rotatable {
 		//可以滚动
 		//新增小时
 
 		//是否按小时滚动
-		if w.hourly {
-			//可以小时滚动
+		if w.rottype == ROT_TYPE_TIME_DAY || w.rottype == ROT_TYPE_TIME_HOUR {
+			//可以天滚动
 			now := time.Now()
-			format := w.hourfilesuffix
-			if format == "" {
-				format = DEFUALT_HOUR_SUFFIX
-				w.hourfilesuffix = DEFUALT_HOUR_SUFFIX
+			if w.rotsuffix == "" {
+				if w.rottype == ROT_TYPE_TIME_DAY {
+					w.rotsuffix = DEFUALT_ROT_TIME_SUFFIX_DAY
+				} else if w.rottype == ROT_TYPE_TIME_HOUR {
+					w.rotsuffix = DEFUALT_ROT_TIME_SUFFIX_HOUR
+				}
 			}
+			suffix := w.rotsuffix
 			//修改要写入的文件名称
-			toWriteFile = w.filename + fmt.Sprintf("%s", now.Format(format))
+			toWriteFile = w.filename + fmt.Sprintf("%s", now.Format(suffix))
 			//设置下一次滚动的时间
-			interval := w.hourinterval
-			if interval < 0 {
-				w.hourinterval, interval = 1, 1
+			interval := w.rotinterval
+			if interval <= 0 {
+				w.rotinterval, interval = 1, 1
 			}
-			aft1hour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+interval, 0, 0, 0, time.Local)
-			//aft1hour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second() + 5, 0, time.Local)
-			w.nxtRotateSec = aft1hour.Unix()
+			var aftTime time.Time
+			if w.rottype == ROT_TYPE_TIME_DAY {
+				aftTime = time.Date(now.Year(), now.Month(), now.Day()+interval, 0, 0, 0, 0, time.Local)
+			} else if w.rottype == ROT_TYPE_TIME_HOUR {
+				aftTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+interval, 0, 0, 0, time.Local)
+			}
+			w.nxtRotateTime = aftTime.Unix()
 		}
 
 	}
@@ -191,13 +196,6 @@ func (w *FileLogWriter) intRotate() error {
 	now := time.Now()
 	fmt.Fprint(w.file, FormatLogRecord(w.header, &LogRecord{Created: now}))
 
-	// Set the daily open date to the current date
-	w.daily_opendate = now.Day()
-
-	// initialize rotation values
-	w.maxlines_curlines = 0
-	w.maxsize_cursize = 0
-
 	return nil
 }
 
@@ -211,69 +209,56 @@ func (w *FileLogWriter) SetFormat(format string) *FileLogWriter {
 // Set the logfile header and footer (chainable).  Must be called before the first log
 // message is written.  These are formatted similar to the FormatLogRecord (e.g.
 // you can use %D and %T in your header/footer for date and time).
-func (w *FileLogWriter) SetHeadFoot(head, foot string) *FileLogWriter {
-	w.header, w.trailer = head, foot
-	if w.maxlines_curlines == 0 {
-		fmt.Fprint(w.file, FormatLogRecord(w.header, &LogRecord{Created: time.Now()}))
-	}
-	return w
-}
-
-// Set rotate at linecount (chainable). Must be called before the first log
-// message is written.
-func (w *FileLogWriter) SetRotateLines(maxlines int) *FileLogWriter {
-	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotateLines: %v\n", maxlines)
-	w.maxlines = maxlines
-	return w
-}
+//func (w *FileLogWriter) SetHeadFoot(head, foot string) *FileLogWriter {
+//	w.header, w.trailer = head, foot
+//	if w.maxlines_curlines == 0 {
+//		fmt.Fprint(w.file, FormatLogRecord(w.header, &LogRecord{Created: time.Now()}))
+//	}
+//	return w
+//}
+//
+//// Set rotate at linecount (chainable). Must be called before the first log
+//// message is written.
+//func (w *FileLogWriter) SetRotateLines(maxlines int) *FileLogWriter {
+//	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotateLines: %v\n", maxlines)
+//	w.maxlines = maxlines
+//	return w
+//}
 
 // Set rotate at size (chainable). Must be called before the first log message
 // is written.
-func (w *FileLogWriter) SetRotateSize(maxsize int) *FileLogWriter {
-	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotateSize: %v\n", maxsize)
-	w.maxsize = maxsize
-	return w
-}
-
-// Set rotate daily (chainable). Must be called before the first log message is
-// written.
-func (w *FileLogWriter) SetRotateDaily(daily bool) *FileLogWriter {
-	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotateDaily: %v\n", daily)
-	w.daily = daily
-	return w
-}
+//func (w *FileLogWriter) SetRotateSize(maxsize int) *FileLogWriter {
+//	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotateSize: %v\n", maxsize)
+//	w.maxsize = maxsize
+//	return w
+//}
 
 // SetRotate changes whether or not the old logs are kept. (chainable) Must be
 // called before the first log message is written.  If rotate is false, the
 // files are overwritten; otherwise, they are rotated to another file before the
 // new log is opened.
-func (w *FileLogWriter) SetRotate(rotate bool) *FileLogWriter {
+func (w *FileLogWriter) SetRotatable(rotatable bool) *FileLogWriter {
 	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotate: %v\n", rotate)
-	w.rotate = rotate
+	w.rotatable = rotatable
 	return w
 }
 
-//新增小时
-func (w *FileLogWriter) SetHourly(hourly bool) *FileLogWriter {
-	w.hourly = hourly
+func (w *FileLogWriter) SetRotSuffix(rotsuffix string) *FileLogWriter {
+	w.rotsuffix = rotsuffix
 	return w
 }
-func (w *FileLogWriter) SetHourFileSuffix(hourfilesuffix string) *FileLogWriter {
-	w.hourfilesuffix = hourfilesuffix
-	return w
-}
-func (w *FileLogWriter) SetHourInterval(hourinterval int) *FileLogWriter {
-	w.hourinterval = hourinterval
+func (w *FileLogWriter) SetRotInterval(rotinterval int) *FileLogWriter {
+	w.rotinterval = rotinterval
 	return w
 }
 
 // NewXMLLogWriter is a utility method for creating a FileLogWriter set up to
 // output XML record log messages instead of line-based ones.
 func NewXMLLogWriter(fname string, rotate bool) *FileLogWriter {
-	return NewFileLogWriter(fname, rotate, false, "", 1).SetFormat(
+	return NewFileLogWriter(fname, rotate, "day", "", 1).SetFormat(
 		`	<record level="%L">
 		<timestamp>%D %T</timestamp>
 		<source>%S</source>
 		<message>%M</message>
-	</record>`).SetHeadFoot("<log created=\"%D %T\">", "</log>")
+	</record>`)
 }
