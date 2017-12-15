@@ -535,6 +535,6 @@ func BenchmarkFileUtilNotLog(b *testing.B) {
 func TestDate(t *testing.T) {
 	now := time.Now()
 	nextDate := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, now.Minute(), now.Second(), 0, time.Local)
-	fmt.Println(nextDate.Format("2006_01_02_15_04_05_06"))
+	fmt.Println(nextDate.Format("2006_01_02_15_04_05_06.log"))
 
 }
