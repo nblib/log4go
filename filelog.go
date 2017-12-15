@@ -109,17 +109,17 @@ func NewFileLogWriter(fname string, rotate bool, hourly bool, hourFileSuffix str
 				//	}
 				//}
 				//新增小时
-				if n2.Unix() >= w.nxtRotateSec {
+				if w.rotate && w.hourly && n2.Unix() >= w.nxtRotateSec {
 					// 更换新文件
 					if err := w.intRotate(); err != nil {
 						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 						return
 					}
 				}
-				// Perform the write
+				// 记录日志
 				_, err := fmt.Fprint(w.file, FormatLogRecord(w.format, rec))
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.curFileName, err)
 					return
 				}
 
@@ -140,67 +140,52 @@ func (w *FileLogWriter) Rotate() {
 
 // If this is called in a threaded context, it MUST be synchronized
 func (w *FileLogWriter) intRotate() error {
-	// Close any log file that may be open
+	// 开始更换文件,首先关闭当前记录的日志文件
 	if w.file != nil {
 		fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
 		w.file.Close()
 	}
+	/* 然后判断是否可以滚动
+	滚动当前分为三种:日期,文件大小,行数.
+	日期以小时为单位,比如一天则为24,一个小时为1,
+	文件大小以M为单位.
+	行数以k为单位.*/
 
-	// If we are keeping log files, move it to the next available number
+	//写入的文件名,开始为设置的文件名 filename
+	toWriteFile := w.filename
+
 	if w.rotate {
-		//_, err := os.Lstat(w.filename)
-		//if err == nil { // file exists
-		//	// Find the next available number
-		//	num := 1
-		//	fname := ""
-		//	for ; err == nil && num <= 999; num++ {
-		//		fname = w.filename + fmt.Sprintf(".%03d", num)
-		//		_, err = os.Lstat(fname)
-		//	}
-		//	// return error if the last file checked still existed
-		//	if err == nil {
-		//		return fmt.Errorf("Rotate: Cannot find free log number to rename %s\n", w.filename)
-		//	}
-		//
-		//	// Rename the file to its newfound home
-		//	err = os.Rename(w.filename, fname)
-		//	if err != nil {
-		//		return fmt.Errorf("Rotate: %s\n", err)
-		//	}
-		//}
+		//可以滚动
 		//新增小时
+
+		//是否按小时滚动
 		if w.hourly {
+			//可以小时滚动
 			now := time.Now()
 			format := w.hourfilesuffix
 			if format == "" {
 				format = DEFUALT_HOUR_SUFFIX
 				w.hourfilesuffix = DEFUALT_HOUR_SUFFIX
 			}
-
-			fName := w.filename + "." + fmt.Sprintf("%s", now.Format(format))
-			fd, err := os.OpenFile(fName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
-			if err != nil {
-				return err
-			}
-			w.curFileName = fName
-			w.file = fd
+			//修改要写入的文件名称
+			toWriteFile = w.filename + "." + fmt.Sprintf("%s", now.Format(format))
+			//设置下一次滚动的时间
 			interval := w.hourinterval
-			if interval < 0 || interval > 23 {
+			if interval < 0 {
 				w.hourinterval, interval = 1, 1
 			}
 			aft1hour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+interval, 0, 0, 0, time.Local)
 			//aft1hour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second() + 5, 0, time.Local)
 			w.nxtRotateSec = aft1hour.Unix()
-
-			return nil
 		}
 
 	}
 	// Open the log file
-	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	fd, err := os.OpenFile(toWriteFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
 		return err
 	}
+	w.curFileName = toWriteFile
 	w.file = fd
 
 	now := time.Now()

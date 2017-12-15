@@ -28,12 +28,12 @@
         <property name="daily">true
         </property> <!-- Automatically rotates when a log message is written after midnight -->
         <!-- 新增按小时滚动文件 -->
-        <property name="hourly">true</property> <!-- 开启按小时滚动文件 -->
+        <property name="hourly">false</property> <!-- 开启按小时滚动文件 -->
         <property name="hourfilesuffix">20060102_15</property> <!-- 按小时滚动文件名称后缀模板,比如"20060102_1516"-->
         <property name="hourinterval">1</property> <!-- 按小时的间隔事件,单位小时-->
 
     </filter>
-    <filter enabled="true">
+    <filter enabled="false">
         <tag>xmllog</tag>
         <type>xml</type>
         <level>TRACE</level>
