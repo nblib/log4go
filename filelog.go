@@ -168,7 +168,7 @@ func (w *FileLogWriter) intRotate() error {
 				w.hourfilesuffix = DEFUALT_HOUR_SUFFIX
 			}
 			//修改要写入的文件名称
-			toWriteFile = w.filename + "." + fmt.Sprintf("%s", now.Format(format))
+			toWriteFile = w.filename + fmt.Sprintf("%s", now.Format(format))
 			//设置下一次滚动的时间
 			interval := w.hourinterval
 			if interval < 0 {
