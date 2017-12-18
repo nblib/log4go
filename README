@@ -13,3 +13,5 @@ Acknowledgements:
 
 # New feature
 * log 到文件可以选择滚动类型,比如:按天,小时等等.
+### 1.2
+socketlog序列化record为json时使用的json包修改为字符串拼接,测试序列化过程速度加快1倍左右
