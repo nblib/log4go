@@ -108,8 +108,8 @@ func (log Logger) LoadConfiguration(filename string) {
 			filt, good = xmlToConsoleLogWriter(filename, xmlfilt.Property, enabled)
 		case "file":
 			filt, good = xmlToFileLogWriter(filename, xmlfilt.Property, enabled)
-		//case "xml":
-		//	filt, good = xmlToXMLLogWriter(filename, xmlfilt.Property, enabled)
+			//case "xml":
+			//	filt, good = xmlToXMLLogWriter(filename, xmlfilt.Property, enabled)
 		case "socket":
 			filt, good = xmlToSocketLogWriter(filename, xmlfilt.Property, enabled)
 		default:
@@ -178,7 +178,7 @@ func xmlToFileLogWriter(filename string, props []xmlProperty, enabled bool) (*Fi
 	rotatable := false
 	rottype := ""
 	rotsuffix := ""
-	rotinterval := 0
+	rotinterval := 1
 	// Parse properties
 	for _, prop := range props {
 		switch prop.Name {
