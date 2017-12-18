@@ -52,6 +52,8 @@ import (
 	"time"
 	"strings"
 	"runtime"
+	"bytes"
+	"strconv"
 )
 
 // Version information
@@ -68,7 +70,7 @@ const (
 type level int
 
 const (
-	FINEST level = iota
+	FINEST   level = iota
 	FINE
 	DEBUG
 	TRACE
@@ -105,6 +107,30 @@ type LogRecord struct {
 	Created time.Time // The time at which the log message was created (nanoseconds)
 	Source  string    // The message source
 	Message string    // The log message
+}
+
+func (rec *LogRecord) toJson() []byte {
+	var buf bytes.Buffer
+	buf.WriteString("{\"Level\":")
+	buf.WriteString(strconv.Itoa(int(rec.Level)))
+	buf.WriteString(",")
+
+	buf.WriteString("\"Created\":")
+	timeJson, _ := rec.Created.MarshalJSON()
+	buf.Write(timeJson)
+	buf.WriteString(",")
+
+	buf.WriteString("\"Source\":")
+	buf.WriteString("\"")
+	buf.WriteString(rec.Source)
+	buf.WriteString("\"")
+	buf.WriteString(",")
+	buf.WriteString("\"Message\":")
+	buf.WriteString("\"")
+	buf.WriteString(rec.Message)
+	buf.WriteString("\"")
+	buf.WriteString("}")
+	return buf.Bytes()
 }
 
 /****** LogWriter ******/

@@ -3,7 +3,6 @@
 package log4go
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -39,12 +38,7 @@ func NewSocketLogWriter(proto, hostport string) SocketLogWriter {
 
 		for rec := range w {
 			// Marshall into JSON
-			js, err := json.Marshal(rec)
-			if err != nil {
-				fmt.Fprint(os.Stderr, "SocketLogWriter(%q): %s", hostport, err)
-				return
-			}
-
+			js := rec.toJson()
 			_, err = sock.Write(js)
 			if err != nil {
 				fmt.Fprint(os.Stderr, "SocketLogWriter(%q): %s", hostport, err)
