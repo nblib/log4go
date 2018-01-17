@@ -132,6 +132,17 @@ func (rec *LogRecord) toJson() []byte {
 	buf.WriteString("}")
 	return buf.Bytes()
 }
+func (rec *LogRecord) toSTR() []byte {
+	var buf bytes.Buffer
+
+	dateTime := rec.Created.Format("2006-01-02 15:04:05")
+	buf.WriteString(dateTime)
+
+	buf.WriteString(" ")
+
+	buf.WriteString(rec.Message)
+	return buf.Bytes()
+}
 
 /****** LogWriter ******/
 

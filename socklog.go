@@ -37,9 +37,9 @@ func NewSocketLogWriter(proto, hostport string) SocketLogWriter {
 		}()
 
 		for rec := range w {
-			// Marshall into JSON
-			js := rec.toJson()
-			_, err = sock.Write(js)
+			// Marshall into yyyy-MM-dd HH:mm:ss message
+			message := rec.toSTR()
+			_, err = sock.Write(message)
 			if err != nil {
 				fmt.Fprint(os.Stderr, "SocketLogWriter(%q): %s", hostport, err)
 				return
