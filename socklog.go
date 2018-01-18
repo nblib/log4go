@@ -12,7 +12,7 @@ import (
 // This log writer sends output to a socket
 type SocketLogWriter chan *LogRecord
 
-var UDP_FAILED_WAITTIME time.Duration = 3
+var UDP_FAILED_WAITTIME time.Duration = 1
 // This is the SocketLogWriter's output method
 func (w SocketLogWriter) LogWrite(rec *LogRecord) {
 	//小于缓冲区,才发送,不小于,不发送
