@@ -13,7 +13,10 @@ type SocketLogWriter chan *LogRecord
 
 // This is the SocketLogWriter's output method
 func (w SocketLogWriter) LogWrite(rec *LogRecord) {
-	w <- rec
+	//小于缓冲区,才发送,不小于,不发送
+	if len(w) < LogBufferLength {
+		w <- rec
+	}
 }
 
 func (w SocketLogWriter) Close() {
