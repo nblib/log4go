@@ -26,7 +26,7 @@ func (w SocketLogWriter) Close() {
 func NewSocketLogWriter(proto, hostport string) SocketLogWriter {
 	sock, err := net.Dial(proto, hostport)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "NewSocketLogWriter(%q): %s\n", hostport, err)
+		fmt.Fprintf(os.Stderr, "NewSocketLogWriter(Start connect): %s\n", hostport, err)
 		return nil
 	}
 
