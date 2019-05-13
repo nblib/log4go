@@ -13,6 +13,7 @@ import (
 type SocketLogWriter chan *LogRecord
 
 var UDP_FAILED_WAITTIME time.Duration = 1
+
 // This is the SocketLogWriter's output method
 func (w SocketLogWriter) LogWrite(rec *LogRecord) {
 	//小于缓冲区,才发送,不小于,不发送
@@ -28,7 +29,7 @@ func (w SocketLogWriter) Close() {
 func NewSocketLogWriter(proto, hostport string) SocketLogWriter {
 	sock, err := net.Dial(proto, hostport)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "NewSocketLogWriter(Start connect): %s\n", hostport, err)
+		fmt.Fprintf(os.Stderr, "NewSocketLogWriter(Start connect): %s,err: %v\n", hostport, err)
 		return nil
 	}
 
@@ -46,7 +47,7 @@ func NewSocketLogWriter(proto, hostport string) SocketLogWriter {
 			message := rec.toSTR()
 			_, err = sock.Write(message)
 			if err != nil {
-				fmt.Fprint(os.Stderr, "SocketLogWriter(At writing): %s", hostport, err)
+				fmt.Fprintf(os.Stderr, "SocketLogWriter(At writing): %s,err: %v", hostport, err)
 				//发送失败,等待一段时间重试
 				time.Sleep(UDP_FAILED_WAITTIME * time.Second)
 			}

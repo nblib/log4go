@@ -46,14 +46,14 @@
 package log4go
 
 import (
-	"errors"
-	"os"
-	"fmt"
-	"time"
-	"strings"
-	"runtime"
 	"bytes"
+	"errors"
+	"fmt"
+	"os"
+	"runtime"
 	"strconv"
+	"strings"
+	"time"
 )
 
 // Version information
@@ -70,7 +70,7 @@ const (
 type level int
 
 const (
-	FINEST   level = iota
+	FINEST level = iota
 	FINE
 	DEBUG
 	TRACE
@@ -141,6 +141,7 @@ func (rec *LogRecord) toSTR() []byte {
 	buf.WriteString(" ")
 
 	buf.WriteString(rec.Message)
+	buf.WriteString(" \n")
 	return buf.Bytes()
 }
 
