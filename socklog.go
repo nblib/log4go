@@ -54,9 +54,11 @@ func NewSocketLogWriter(proto, hostport string) SocketLogWriter {
 			message := rec.toSTR()
 			_, err = sock.Write(message)
 			if err != nil {
+
 				fmt.Fprintf(os.Stderr, "SocketLogWriter(At writing): %s,err: %v \n", hostport, err)
 				//发送失败,等待一段时间重试或重连
 				if isTcp {
+					_ = sock.Close()
 					sock = blockForReconnect(proto, hostport)
 				} else {
 					//不是tcp,等待一会再试
