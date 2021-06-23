@@ -1,11 +1,11 @@
 // Copyright (C) 2010, Kyle Lemons <kyle@kylelemons.net>.  All rights reserved.
 
-package log4go
+package v1
 
 import (
+	"fmt"
 	"io"
 	"os"
-	"fmt"
 )
 
 var stdout io.Writer = os.Stdout

@@ -1,6 +1,6 @@
 // Copyright (C) 2010, Kyle Lemons <kyle@kylelemons.net>.  All rights reserved.
 
-package log4go
+package v1
 
 import (
 	"encoding/xml"
@@ -161,7 +161,7 @@ func strToNumSuffix(str string, mult int) int {
 			fallthrough
 		case 'K', 'k':
 			num *= mult
-			str = str[0: len(str)-1]
+			str = str[0 : len(str)-1]
 		}
 	}
 	parsed, _ := strconv.Atoi(str)
@@ -170,7 +170,7 @@ func strToNumSuffix(str string, mult int) int {
 
 /*
  解析配置文件中的file过滤器
- */
+*/
 func xmlToFileLogWriter(filename string, props []xmlProperty, enabled bool) (*FileLogWriter, bool) {
 	file := ""
 	format := "[%D %T] [%L] (%S) %M"
