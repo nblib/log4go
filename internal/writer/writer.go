@@ -8,3 +8,9 @@ type Writer interface {
 	Write(rec *core.Record)
 	Close()
 }
+type WriterRoot struct {
+	OutTime    bool
+	OutSource  bool
+	OutLogName bool
+	Level      core.LEVEL
+}

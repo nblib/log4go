@@ -38,7 +38,7 @@ func TestLoadDefaultLogger(t *testing.T) {
 					t.Fatal("require error, but no error")
 				}
 			} else {
-				if logger == nil || logger.Level != expected {
+				if logger == nil || logger.Level() != expected {
 					t.Fatal("load level error")
 				}
 			}

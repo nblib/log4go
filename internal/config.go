@@ -3,9 +3,9 @@ package internal
 import (
 	"fmt"
 	"github.com/nblib/log4go/internal/core"
+	"github.com/nblib/log4go/internal/util"
 	"github.com/nblib/log4go/internal/writer"
 	"gopkg.in/ini.v1"
-	"log"
 	"os"
 	"strings"
 )
@@ -21,12 +21,13 @@ const (
 func LoadDefaultLogger(cfg *ini.File) (*DefaultLogger, error) {
 	sectionName := "default"
 	if cfg == nil {
-		log.Fatalln("LoadDefaultSection args must not nil")
+		return NewDefaultLogger(DefaultLevel, nil, nil, true), nil
 	}
 	var (
-		finalLevel  core.LEVEL
-		finalForb   []string
-		finalWriter []writer.Writer
+		finalLevel        core.LEVEL
+		finalForb         []string
+		finalWriter       []writer.Writer
+		finalEnableSource bool
 	)
 
 	//section
@@ -34,10 +35,10 @@ func LoadDefaultLogger(cfg *ini.File) (*DefaultLogger, error) {
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "log4go: not found default setting,will use [INFO] level, and send to [os.Stdout] and [os.Stderr]")
 		//use default
-		return NewDefaultLogger(DefaultLevel, nil, nil), nil
+		return NewDefaultLogger(finalLevel, finalForb, finalWriter, finalEnableSource), nil
 	}
 	//level
-	if level, err := loadRequireLevel(section); err != nil {
+	if level, err := util.LoadRequireLevel(section); err != nil {
 		return nil, err
 	} else {
 		finalLevel = level
@@ -63,8 +64,10 @@ func LoadDefaultLogger(cfg *ini.File) (*DefaultLogger, error) {
 			finalWriter = append(finalWriter, w)
 		}
 	}
+	//out condition
+	finalEnableSource = util.LoadBoolConf(section, "enable_source", true)
 
-	return NewDefaultLogger(finalLevel, finalForb, finalWriter), nil
+	return NewDefaultLogger(finalLevel, finalForb, finalWriter, finalEnableSource), nil
 }
 
 func parseWriter(section *ini.Section, parentName string) (writer.Writer, error) {
@@ -73,43 +76,8 @@ func parseWriter(section *ini.Section, parentName string) (writer.Writer, error)
 	name = strings.ToLower(name)
 	switch name {
 	case ".console":
-		return writer.NewConsoleWriter()
+		return writer.NewConsoleWriter(section)
 	default:
 		return nil, fmt.Errorf("log4go: unknown writer type: section:[%s],expect:[%s] got: [%s]", section.Name(), ".file,.console,.socket,...", name)
 	}
-}
-
-func loadLevel(section *ini.Section, defaultVal core.LEVEL) core.LEVEL {
-	fieldName := "level"
-	key, err := section.GetKey(fieldName)
-	if err != nil {
-		return defaultVal
-	}
-	loadLevel := key.String()
-	loadLevel = strings.ToLower(loadLevel)
-	level, ok := core.LevelMap[loadLevel]
-	if !ok {
-		return defaultVal
-	}
-	return level
-}
-func loadRequireLevel(section *ini.Section) (core.LEVEL, error) {
-	key, err := section.GetKey("level")
-	if err != nil {
-		return -1, cfgRequireErr(section.Name(), "level")
-	}
-	loadLevel := key.String()
-	loadLevel = strings.ToLower(loadLevel)
-	level, ok := core.LevelMap[loadLevel]
-	if !ok {
-		return -1, cfgUnexpectErr(section.Name(), "debug,info,warn,error", loadLevel)
-	}
-	return level, nil
-}
-
-func cfgRequireErr(name, require string) error {
-	return fmt.Errorf("log4go: load cfg error: section:[%s], require:[%s]", name, require)
-}
-func cfgUnexpectErr(name, require, got string) error {
-	return fmt.Errorf("log4go: unexpect cfg: section:[%s], require:[%s], got:[%s]", name, require, got)
 }

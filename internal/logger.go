@@ -7,19 +7,33 @@ import (
 
 type LoggerWriter interface {
 	LogRecord(rec *core.Record)
+	Level() core.LEVEL
 }
 
 type DefaultLogger struct {
-	Level     core.LEVEL
-	Forbidden map[string]struct{}
-	Writers   []writer.Writer
+	Name         string
+	level        core.LEVEL
+	Forbidden    map[string]struct{}
+	Writers      []writer.Writer
+	EnableSource bool
 }
 type NormalLogger struct {
+	Name    string
 	Level   core.LEVEL
 	Writers []writer.Writer
 }
 
-func NewDefaultLogger(level core.LEVEL, forb []string, ws []writer.Writer) *DefaultLogger {
+func (d DefaultLogger) LogRecord(rec *core.Record) {
+	for _, w := range d.Writers {
+		w.Write(rec)
+	}
+}
+
+func (d DefaultLogger) Level() core.LEVEL {
+	return d.level
+}
+
+func NewDefaultLogger(level core.LEVEL, forb []string, ws []writer.Writer, enableSource bool) *DefaultLogger {
 	//forbidden
 	var forbMap map[string]struct{}
 	if forb != nil && len(forb) > 0 {
@@ -36,15 +50,17 @@ func NewDefaultLogger(level core.LEVEL, forb []string, ws []writer.Writer) *Defa
 		writers = ws
 	} else {
 		writers = make([]writer.Writer, 1)
-		writers[0], _ = writer.NewConsoleWriter()
+		writers[0], _ = writer.NewConsoleWriter(nil)
 	}
 	return &DefaultLogger{
-		Level:     level,
-		Forbidden: forbMap,
-		Writers:   writers,
+		Name:         "default",
+		level:        level,
+		Forbidden:    forbMap,
+		Writers:      writers,
+		EnableSource: enableSource,
 	}
 }
-func NewNormalLogger(level core.LEVEL, ws []writer.Writer) *NormalLogger {
+func NewNormalLogger(name string, level core.LEVEL, ws []writer.Writer) *NormalLogger {
 	//writer
 	var writers []writer.Writer
 	if ws != nil && len(ws) > 0 {
@@ -54,9 +70,10 @@ func NewNormalLogger(level core.LEVEL, ws []writer.Writer) *NormalLogger {
 		}
 	} else {
 		writers = make([]writer.Writer, 1)
-		writers[0], _ = writer.NewConsoleWriter()
+		writers[0], _ = writer.NewConsoleWriter(nil)
 	}
 	return &NormalLogger{
+		Name:    name,
 		Level:   level,
 		Writers: writers,
 	}

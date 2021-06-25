@@ -9,7 +9,7 @@ const (
 	ERROR
 )
 
-var LevelStrings = [...]string{"FNST", "FINE", "DEBG", "TRAC", "INFO", "WARN", "EROR", "CRIT"}
+var LevelStrings = [...]string{"DEBUG", "INFO", "WARN", "ERROR"}
 var LevelMap = map[string]LEVEL{
 	"debug": DEBUG,
 	"info":  INFO,
