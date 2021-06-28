@@ -1,7 +1,7 @@
 package writer
 
 import (
-	"github.com/nblib/log4go/internal/core"
+	"github.com/nblib/log4go/v2/internal/core"
 )
 
 type Writer interface {

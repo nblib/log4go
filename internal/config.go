@@ -2,9 +2,9 @@ package internal
 
 import (
 	"fmt"
-	"github.com/nblib/log4go/internal/core"
-	"github.com/nblib/log4go/internal/util"
-	"github.com/nblib/log4go/internal/writer"
+	"github.com/nblib/log4go/v2/internal/core"
+	"github.com/nblib/log4go/v2/internal/util"
+	"github.com/nblib/log4go/v2/internal/writer"
 	"gopkg.in/ini.v1"
 	"os"
 	"strings"

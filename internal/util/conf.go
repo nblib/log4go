@@ -2,7 +2,7 @@ package util
 
 import (
 	"fmt"
-	"github.com/nblib/log4go/internal/core"
+	"github.com/nblib/log4go/v2/internal/core"
 	"gopkg.in/ini.v1"
 	"strings"
 )

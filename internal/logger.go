@@ -1,8 +1,8 @@
 package internal
 
 import (
-	"github.com/nblib/log4go/internal/core"
-	"github.com/nblib/log4go/internal/writer"
+	"github.com/nblib/log4go/v2/internal/core"
+	"github.com/nblib/log4go/v2/internal/writer"
 )
 
 type LoggerWriter interface {
