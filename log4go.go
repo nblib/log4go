@@ -2,8 +2,8 @@ package log4go
 
 import (
 	"fmt"
-	"github.com/nblib/log4go/internal"
-	"github.com/nblib/log4go/internal/core"
+	"github.com/nblib/log4go/v2/internal"
+	"github.com/nblib/log4go/v2/internal/core"
 	"gopkg.in/ini.v1"
 	"log"
 	"os"
