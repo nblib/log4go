@@ -1,4 +1,4 @@
-module github.com/nblib/log4go/v1
+module github.com/nblib/log4go/v2
 
 go 1.16
 
