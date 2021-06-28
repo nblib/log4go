@@ -137,7 +137,7 @@ func (l *loggerWrapper) checkLevel(level core.LEVEL) bool {
 func (l *loggerWrapper) intLogf(lvl core.LEVEL, format string, args ...interface{}) {
 
 	// Determine caller func
-	pc, _, lineno, ok := runtime.Caller(2)
+	pc, _, lineno, ok := runtime.Caller(3)
 	src := ""
 	if ok {
 		src = fmt.Sprintf("%s:%d", runtime.FuncForPC(pc).Name(), lineno)
@@ -162,7 +162,7 @@ func (l *loggerWrapper) intLogf(lvl core.LEVEL, format string, args ...interface
 // Send a closure log message internally
 func (l *loggerWrapper) intLogc(lvl core.LEVEL, closure func() string) {
 	// Determine caller func
-	pc, _, lineno, ok := runtime.Caller(2)
+	pc, _, lineno, ok := runtime.Caller(3)
 	src := ""
 	if ok {
 		src = fmt.Sprintf("%s:%d", runtime.FuncForPC(pc).Name(), lineno)
